@@ -1,0 +1,13 @@
+# Entorno virtual
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Archivos temporales
+.DS_Store
+*.log
+
+# Configuraciones locales
+.idea/
+.vscode/
