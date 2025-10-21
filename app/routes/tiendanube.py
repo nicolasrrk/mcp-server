@@ -24,7 +24,7 @@ async def fetch_all_products():
     Obtiene todos los productos de Tienda Nube recorriendo todas las páginas.
     """
     headers = {
-        "Authentication": f"{ACCESS_TOKEN}",
+        "Authentication": f"bearer {ACCESS_TOKEN}",
         "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
     }
 
@@ -88,7 +88,7 @@ async def get_categories():
     Devuelve todas las categorías de productos de Tienda Nube.
     """
     headers = {
-        "Authentication": f"{ACCESS_TOKEN}",
+        "Authentication": f"bearer {ACCESS_TOKEN}",
         "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
     }
 
