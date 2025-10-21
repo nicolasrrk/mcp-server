@@ -1,4 +1,18 @@
-fastapi
-uvicorn
-httpx
-python-dotenv
+# === Servidor MCP / FastAPI ===
+fastapi>=0.115.0
+uvicorn>=0.30.0
+
+# === HTTP requests (para Tienda Nube, LyZR, etc.) ===
+httpx>=0.27.0
+
+# === Variables de entorno ===
+python-dotenv>=1.0.1
+
+# === Manejo de caché simple en memoria ===
+cachetools>=5.3.3
+
+# === Tipado opcional y utilidades ===
+pydantic>=2.8.2
+
+# === Testing / Debug (opcional pero recomendado) ===
+pytest>=8.3.2

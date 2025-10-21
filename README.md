@@ -34,11 +34,17 @@ mcp-server/
 
 ---
 
-## ⚙️ Instalación local
+## aca dejo la Instalación local
 
 ```bash
-git clone https://github.com/<tu_usuario>/mcp-server.git
+git clone https://github.com/<usuario>/mcp-server.git
 cd mcp-server
 python -m venv venv
 venv\Scripts\activate     # (Windows)
 pip install -r requirements.txt
+
+Autor
+
+Pablo Nicolás Ramírez
+Desarrollador e Integrador MCP + LyZR
+Proyecto de integración con LucidBot y Tienda Nube
