@@ -16,5 +16,8 @@ app.include_router(tiendanube.router, prefix="/tiendanube")
 def root():
     return {"status": "MCP Server está corriendo"}
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))  # 👈 Railway asigna PORT automáticamente
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
