@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 import httpx
 import os
 from cachetools import TTLCache
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 
@@ -55,27 +56,66 @@ async def fetch_all_products():
     return all_products
 
 
-# === Endpoint para obtener productos ===
+# === Endpoint para obtener productos paginados o filtrados ===
 @router.get("/all-products")
-async def get_all_products():
+async def get_all_products(
+    page: int = Query(1, description="Número de página"),
+    per_page: int = Query(100, description="Cantidad de productos por página (máx 200)"),
+    q: Optional[str] = Query(None, description="Filtrar productos por palabra clave"),
+    use_cache: bool = Query(True, description="Usar caché si está disponible")
+):
     """
-    Endpoint para obtener todos los productos desde Tienda Nube.
+    Devuelve productos en lotes (paginados) desde Tienda Nube.
     Usa caché para evitar sobrecarga de peticiones.
     """
-    cache_key = "all_products"
+    cache_key = f"products_page_{page}_per_{per_page}"
 
-    if cache_key in cache:
-        return {
-            "cached": True,
-            "count": len(cache[cache_key]),
-            "products": cache[cache_key]
+    # 🔹 1. Si está en caché y se permite usarla
+    if use_cache and cache_key in cache:
+        products = cache[cache_key]
+    else:
+        headers = {
+            "Authentication": f"bearer {ACCESS_TOKEN}",
+            "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
         }
 
-    products = await fetch_all_products()
-    cache[cache_key] = products
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            params = {"page": page, "per_page": per_page}
+            response = await client.get(f"{BASE_URL}/products", headers=headers, params=params)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        data = response.json()
+
+        # 🔽 2. Reducimos el peso del JSON
+        products = [
+            {
+                "id": p.get("id"),
+                "name": p.get("name", {}).get("es") or p.get("name", {}).get("en"),
+                "sku": p.get("variants", [{}])[0].get("sku"),
+                "price": p.get("variants", [{}])[0].get("price"),
+                "stock": p.get("variants", [{}])[0].get("stock"),
+                "category_id": p.get("categories", [{}])[0].get("id") if p.get("categories") else None,
+                "image": p.get("images", [{}])[0].get("src") if p.get("images") else None,
+                "handle": p.get("handle"),
+            }
+            for p in data
+        ]
+
+        # Guardamos en caché
+        cache[cache_key] = products
+
+    # 🔍 3. Si hay filtro `q`, lo aplicamos
+    if q:
+        products = [
+            p for p in products
+            if q.lower() in (p["name"] or "").lower()
+        ]
 
     return {
-        "cached": False,
+        "cached": use_cache and cache_key in cache,
+        "page": page,
         "count": len(products),
         "products": products
     }
