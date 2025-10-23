@@ -1,9 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 import httpx
 import os
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from typing import Optional
 
 load_dotenv()
 
@@ -56,77 +55,37 @@ async def fetch_all_products():
     return all_products
 
 
-# === Endpoint para obtener productos paginados o filtrados ===
+# === Endpoint para obtener productos ===
 @router.get("/all-products")
-async def get_all_products(
-    page: int = Query(1, description="Número de página"),
-    per_page: int = Query(100, description="Cantidad de productos por página (máx 200)"),
-    q: Optional[str] = Query(None, description="Filtrar productos por palabra clave"),
-    use_cache: bool = Query(True, description="Usar caché si está disponible")
-):
+async def get_all_products():
     """
-    Devuelve productos en lotes (paginados) desde Tienda Nube.
+    Endpoint para obtener todos los productos desde Tienda Nube.
     Usa caché para evitar sobrecarga de peticiones.
     """
-    cache_key = f"products_page_{page}_per_{per_page}"
+    cache_key = "all_products"
 
-    # 🔹 1. Si está en caché y se permite usarla
-    if use_cache and cache_key in cache:
-        products = cache[cache_key]
-    else:
-        headers = {
-            "Authentication": f"bearer {ACCESS_TOKEN}",
-            "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
+    if cache_key in cache:
+        return {
+            "cached": True,
+            "count": len(cache[cache_key]),
+            "products": cache[cache_key]
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            params = {"page": page, "per_page": per_page}
-            response = await client.get(f"{BASE_URL}/products", headers=headers, params=params)
-
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
-
-        data = response.json()
-
-        # 🔽 2. Reducimos el peso del JSON
-        products = [
-            {
-                "id": p.get("id"),
-                "name": p.get("name", {}).get("es") or p.get("name", {}).get("en"),
-                "sku": p.get("variants", [{}])[0].get("sku"),
-                "price": p.get("variants", [{}])[0].get("price"),
-                "stock": p.get("variants", [{}])[0].get("stock"),
-                "category_id": p.get("categories", [{}])[0].get("id") if p.get("categories") else None,
-                "image": p.get("images", [{}])[0].get("src") if p.get("images") else None,
-                "handle": p.get("handle"),
-                "url": f"https://mayorista.pampashop.com.ar/products/{p.get('handle')}" if p.get("handle") else None, 
-            }
-            for p in data
-        ]
-
-        # Guardamos en caché
-        cache[cache_key] = products
-
-    # 🔍 3. Si hay filtro `q`, lo aplicamos
-    if q:
-        products = [
-            p for p in products
-            if q.lower() in (p["name"] or "").lower()
-        ]
+    products = await fetch_all_products()
+    cache[cache_key] = products
 
     return {
-        "cached": use_cache and cache_key in cache,
-        "page": page,
+        "cached": False,
         "count": len(products),
         "products": products
     }
 
 
-# === Endpoint para obtener TODAS las categorías (paginadas si es necesario) ===
 @router.get("/categories")
-async def get_all_categories():
+async def get_categories():
     """
-    Devuelve todas las categorías de productos de Tienda Nube, recorriendo todas las páginas.
+    Devuelve todas las categorías existentes de productos desde Tienda Nube,
+    recorriendo todas las páginas y simplificando la respuesta.
     """
     headers = {
         "Authentication": f"bearer {ACCESS_TOKEN}",
@@ -135,9 +94,9 @@ async def get_all_categories():
 
     all_categories = []
     page = 1
-    per_page = 200  # máximo por página permitido
+    per_page = 200  # máximo permitido por la API
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         while True:
             params = {"page": page, "per_page": per_page}
             response = await client.get(f"{BASE_URL}/categories", headers=headers, params=params)
@@ -146,35 +105,28 @@ async def get_all_categories():
                 raise HTTPException(status_code=response.status_code, detail=response.text)
 
             data = response.json()
-
-            # Si no hay más categorías, se termina
             if not data:
                 break
 
-            # Normalizamos cada categoría para evitar errores de tipo
+            # 🔽 Simplificamos los campos relevantes
             for c in data:
-                all_categories.append({
+                simplified = {
                     "id": c.get("id"),
-                    "name": c.get("name", {}).get("es") or c.get("name", {}).get("en") or "Sin nombre",
-                    "description": c.get("description", {}).get("es") or None,
-                    "parent_id": c["parent"] if isinstance(c.get("parent"), int) else (c.get("parent", {}).get("id") if c.get("parent") else None),
-                    "handle": c.get("handle"),
-                    "position": c.get("position"),
-                    "created_at": c.get("created_at")
-                })
+                    "name": c.get("name", {}).get("es", "") or c.get("name", {}).get("en", ""),
+                    "description": c.get("description", {}).get("es", "") or c.get("description", {}).get("en", ""),
+                    "parent_id": c.get("parent", {}).get("id") if c.get("parent") else None
+                }
+                all_categories.append(simplified)
 
-            # Si devuelve menos de per_page, es la última página
+            # Si devuelve menos que el máximo por página, no hay más
             if len(data) < per_page:
                 break
-
             page += 1
 
     return {
         "count": len(all_categories),
         "categories": all_categories
     }
-
-
 
 
 # === Endpoint de depuración de variables de entorno ===
