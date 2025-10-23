@@ -99,6 +99,7 @@ async def get_all_products(
                 "category_id": p.get("categories", [{}])[0].get("id") if p.get("categories") else None,
                 "image": p.get("images", [{}])[0].get("src") if p.get("images") else None,
                 "handle": p.get("handle"),
+                "url": f"https://mayorista.pampashop.com.ar/products/{p.get('handle')}" if p.get("handle") else None, 
             }
             for p in data
         ]
