@@ -81,11 +81,11 @@ async def get_all_products():
     }
 
 
+# === Endpoint para obtener TODAS las categorías (paginadas si es necesario) ===
 @router.get("/categories")
-async def get_categories():
+async def get_all_categories():
     """
-    Devuelve todas las categorías existentes de productos desde Tienda Nube,
-    recorriendo todas las páginas y simplificando la respuesta.
+    Devuelve todas las categorías de productos de Tienda Nube, recorriendo todas las páginas.
     """
     headers = {
         "Authentication": f"bearer {ACCESS_TOKEN}",
@@ -94,9 +94,9 @@ async def get_categories():
 
     all_categories = []
     page = 1
-    per_page = 200  # máximo permitido por la API
+    per_page = 200  # máximo por página permitido
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         while True:
             params = {"page": page, "per_page": per_page}
             response = await client.get(f"{BASE_URL}/categories", headers=headers, params=params)
@@ -105,28 +105,35 @@ async def get_categories():
                 raise HTTPException(status_code=response.status_code, detail=response.text)
 
             data = response.json()
+
+            # Si no hay más categorías, se termina
             if not data:
                 break
 
-            # 🔽 Simplificamos los campos relevantes
+            # Normalizamos cada categoría para evitar errores de tipo
             for c in data:
-                simplified = {
+                all_categories.append({
                     "id": c.get("id"),
-                    "name": c.get("name", {}).get("es", "") or c.get("name", {}).get("en", ""),
-                    "description": c.get("description", {}).get("es", "") or c.get("description", {}).get("en", ""),
-                    "parent_id": c.get("parent", {}).get("id") if c.get("parent") else None
-                }
-                all_categories.append(simplified)
+                    "name": c.get("name", {}).get("es") or c.get("name", {}).get("en") or "Sin nombre",
+                    "description": c.get("description", {}).get("es") or None,
+                    "parent_id": c["parent"] if isinstance(c.get("parent"), int) else (c.get("parent", {}).get("id") if c.get("parent") else None),
+                    "handle": c.get("handle"),
+                    "position": c.get("position"),
+                    "created_at": c.get("created_at")
+                })
 
-            # Si devuelve menos que el máximo por página, no hay más
+            # Si devuelve menos de per_page, es la última página
             if len(data) < per_page:
                 break
+
             page += 1
 
     return {
         "count": len(all_categories),
         "categories": all_categories
     }
+
+
 
 
 # === Endpoint de depuración de variables de entorno ===
