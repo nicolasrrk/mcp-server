@@ -11,8 +11,13 @@ python-dotenv>=1.0.1
 # === Manejo de caché simple en memoria ===
 cachetools>=5.3.3
 
-# === Tipado opcional y utilidades ===
+# === Tipado opcional y validaciones ===
 pydantic>=2.8.2
 
-# === Testing / Debug (opcional pero recomendado) ===
+# === Testing / Debug ===
 pytest>=8.3.2
+
+# === Procesamiento eficiente de JSON grandes ===
+ijson>=3.3.0           # Lectura de JSON por streaming
+orjson>=3.10.7         # Serialización JSON ultrarrápida
+

@@ -81,24 +81,53 @@ async def get_all_products():
     }
 
 
-# === Endpoint para obtener categorías ===
 @router.get("/categories")
 async def get_categories():
     """
-    Devuelve todas las categorías de productos de Tienda Nube.
+    Devuelve todas las categorías existentes de productos desde Tienda Nube,
+    recorriendo todas las páginas y simplificando la respuesta.
     """
     headers = {
         "Authentication": f"bearer {ACCESS_TOKEN}",
         "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
     }
 
+    all_categories = []
+    page = 1
+    per_page = 200  # máximo permitido por la API
+
     async with httpx.AsyncClient(timeout=20.0) as client:
-        response = await client.get(f"{BASE_URL}/categories", headers=headers)
+        while True:
+            params = {"page": page, "per_page": per_page}
+            response = await client.get(f"{BASE_URL}/categories", headers=headers, params=params)
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
 
-    return response.json()
+            data = response.json()
+            if not data:
+                break
+
+            # 🔽 Simplificamos los campos relevantes
+            for c in data:
+                simplified = {
+                    "id": c.get("id"),
+                    "name": c.get("name", {}).get("es", "") or c.get("name", {}).get("en", ""),
+                    "description": c.get("description", {}).get("es", "") or c.get("description", {}).get("en", ""),
+                    "parent_id": c.get("parent", {}).get("id") if c.get("parent") else None
+                }
+                all_categories.append(simplified)
+
+            # Si devuelve menos que el máximo por página, no hay más
+            if len(data) < per_page:
+                break
+            page += 1
+
+    return {
+        "count": len(all_categories),
+        "categories": all_categories
+    }
+
 
 # === Endpoint de depuración de variables de entorno ===
 @router.get("/tiendanube/debug")
