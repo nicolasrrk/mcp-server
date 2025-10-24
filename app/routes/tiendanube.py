@@ -24,7 +24,7 @@ async def fetch_all_products():
     Obtiene todos los productos de Tienda Nube recorriendo todas las páginas.
     """
     headers = {
-        "Authentication": f"{ACCESS_TOKEN}",
+        "Authentication": f"bearer {ACCESS_TOKEN}",
         "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
     }
 
@@ -88,7 +88,7 @@ async def get_categories():
     Devuelve todas las categorías de productos de Tienda Nube.
     """
     headers = {
-        "Authentication": f"{ACCESS_TOKEN}",
+        "Authentication": f"bearer {ACCESS_TOKEN}",
         "User-Agent": "Lyzr-TiendaNubeConnector (pampashop2025@gmail.com)"
     }
 
@@ -99,3 +99,14 @@ async def get_categories():
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
     return response.json()
+
+# === Endpoint de depuración de variables de entorno ===
+@router.get("/tiendanube/debug")
+async def debug_tiendanube():
+    import os
+    return {
+        "store_id": os.getenv("TIENDANUBE_STORE_ID"),
+        "access_token_exists": os.getenv("TIENDANUBE_ACCESS_TOKEN") is not None,
+        "access_token_preview": (os.getenv("TIENDANUBE_ACCESS_TOKEN") or "")[:10] + "...",
+        "cache_ttl": os.getenv("TIENDANUBE_CACHE_TTL"),
+    }
