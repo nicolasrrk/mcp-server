@@ -15,7 +15,7 @@ def normalize_text(text: str) -> str:
     nfkd = unicodedata.normalize("NFKD", text)
     return "".join([c for c in nfkd if not unicodedata.combining(c)]).lower()
 
-@router.get("/local-products/search")
+@router.get("/search")
 async def search_local_products(
     query: str = Query(..., description="Texto a buscar (por nombre, marca, categoría, etc.)"),
     page: int = Query(1, description="Número de página"),
