@@ -1,80 +1,78 @@
-import os
-import json
 from fastapi import APIRouter, Query
-from typing import List
+import json
+import os
 
 router = APIRouter()
-DATA_DIR = "app/data"  # ajustá si tu carpeta 'data' está en otro lugar
-CHUNK_PREFIX = "products_"
 
-def normalize_text(text: str) -> str:
-    """Convierte texto a minúsculas y elimina acentos para mejor coincidencia."""
-    import unicodedata
-    if not isinstance(text, str):
-        text = str(text)
-    nfkd = unicodedata.normalize("NFKD", text)
-    return "".join([c for c in nfkd if not unicodedata.combining(c)]).lower()
+# Ruta absoluta a la carpeta /data
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+DATA_DIR = os.path.abspath(DATA_DIR)
 
-@router.get("/local-products/search")
+
+@router.get("/search")
 async def search_local_products(
-    query: str = Query(..., description="Texto a buscar (por nombre, marca, categoría, etc.)"),
+    query: str = Query(..., description="Texto a buscar (por nombre, marca, color, talle, etc.)"),
     page: int = Query(1, description="Número de página"),
-    per_page: int = Query(50, description="Resultados por página")
+    per_page: int = Query(50, description="Cantidad de resultados por página")
 ):
-    """Busca productos localmente en los JSON generados desde el CSV por lotes."""
-    query_norm = normalize_text(query)
-    results: List[dict] = []
+    keywords = [q.strip().lower() for q in query.split() if q.strip()]
 
-    chunk_files = sorted([
-        f for f in os.listdir(DATA_DIR)
-        if f.startswith(CHUNK_PREFIX) and f.endswith(".json")
-    ])
+    all_products = []
 
-    for chunk_path in chunk_files:
-        with open(os.path.join(DATA_DIR, chunk_path), "r", encoding="utf-8") as f:
-            chunk = json.load(f)
+    # 🔹 Cargar todos los archivos JSON del directorio data/
+    for filename in os.listdir(DATA_DIR):
+        if filename.endswith(".json"):
+            path = os.path.join(DATA_DIR, filename)
+            with open(path, "r", encoding="utf-8") as f:
+                try:
+                    data = json.load(f)
 
-        for product in chunk:
-            # buscamos en los campos relevantes del CSV
-            texto_busqueda = " ".join([
-                str(product.get("Nombre", "")),
-                str(product.get("Marca", "")),
-                str(product.get("Categoría", "")),
-                str(product.get("Color", "")),
-                str(product.get("Talle", "")),
-                str(product.get("ID", "")),
-            ])
-            texto_norm = normalize_text(texto_busqueda)
+                    # Si el archivo es una cadena (texto JSON dentro de otro JSON)
+                    if isinstance(data, str):
+                        data = json.loads(data)
 
-            if query_norm in texto_norm:
-                results.append({
-                    "id": product.get("ID"),
-                    "name": product.get("Nombre"),
-                    "brand": product.get("Marca"),
-                    "category": product.get("Categoría"),
-                    "color": product.get("Color"),
-                    "size": product.get("Talle"),
-                    "stock": product.get("Stock"),
-                    "price": product.get("Precio"),
-                    "url": product.get("URL"),
-                    "image": product.get("Imagen"),
-                })
+                    # Si no es lista, omitir
+                    if not isinstance(data, list):
+                        print(f"⚠️ Archivo {filename} no contiene una lista válida, se omite.")
+                        continue
 
-        # Si ya superamos un límite de resultados (p. ej. 1000), paramos para no saturar memoria
-        if len(results) > 1000:
-            break
+                    all_products.extend(data)
 
-    # === Paginación ===
-    total = len(results)
+                except Exception as e:
+                    print(f"❌ Error al leer {filename}: {e}")
+
+    matched = []
+
+    # 🔹 Buscar coincidencias
+    for p in all_products:
+        if not isinstance(p, dict):
+            continue  # saltar si no es un diccionario
+
+        text = " ".join([
+            str(p.get("Nombre", "")),
+            str(p.get("Marca", "")),
+            str(p.get("Categoría", "")),
+            str(p.get("Color", "")),
+            str(p.get("Talle", "")),
+            str(p.get("Stock", "")),
+            str(p.get("Precio", "")),
+        ]).lower()
+
+        # Coincidencia: todas las palabras clave deben aparecer
+        if all(k in text for k in keywords):
+            matched.append(p)
+
+    # 🔹 Paginación
     start = (page - 1) * per_page
     end = start + per_page
-    page_results = results[start:end]
+    paginated = matched[start:end]
 
+    # 🔹 Respuesta final
     return {
         "query": query,
         "page": page,
-        "results_count": len(page_results),
-        "total_found": total,
-        "has_more": end < total,
-        "products": page_results
+        "results_count": len(paginated),
+        "total_found": len(matched),
+        "has_more": len(matched) > end,
+        "products": paginated,
     }
