@@ -111,7 +111,7 @@ async def get_categories():
     return {"count": len(all_categories), "categories": all_categories}
 
 # === Debug ===
-@router.get("/tiendanube/debug")
+@router.get("/debug")
 async def debug_tiendanube():
     return {
         "store_id": STORE_ID,

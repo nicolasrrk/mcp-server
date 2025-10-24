@@ -12,6 +12,7 @@ app.include_router(lyzr_tools.router, prefix="/lyzr")
 app.include_router(webhook.router, prefix="/webhook")
 app.include_router(tiendanube.router, prefix="/tiendanube")
 app.include_router(local_products.router)
+app.include_router(local_products.router, prefix="/local") 
 
 @app.get("/")
 def root():
