@@ -2,7 +2,7 @@
 fastapi>=0.115.0
 uvicorn>=0.30.0
 
-# === HTTP requests (para Tienda Nube, LyZR, etc.) ===
+# === HTTP requests (para Tienda Nube, Lyzr, etc.) ===
 httpx>=0.27.0
 
 # === Variables de entorno ===
@@ -11,13 +11,22 @@ python-dotenv>=1.0.1
 # === Manejo de caché simple en memoria ===
 cachetools>=5.3.3
 
-# === Tipado opcional y validaciones ===
+# === Tipado opcional y validación ===
 pydantic>=2.8.2
+
+# === Manejo de datos y archivos CSV / JSON ===
+pandas>=2.2.2
+numpy>=1.26.4
+
+# === Utilidades del sistema y fechas ===
+python-dateutil>=2.9.0.post0
 
 # === Testing / Debug ===
 pytest>=8.3.2
+pytest-asyncio>=0.23.6
 
-# === Procesamiento eficiente de JSON grandes ===
-ijson>=3.3.0           # Lectura de JSON por streaming
-orjson>=3.10.7         # Serialización JSON ultrarrápida
+# === (Opcional) Manejo de logs y colores en consola ===
+rich>=13.7.1
 
+# === (Opcional) Para tareas futuras con datos grandes ===
+pyarrow>=16.1.0
