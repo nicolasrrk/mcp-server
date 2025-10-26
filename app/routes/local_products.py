@@ -5,7 +5,7 @@ import os
 router = APIRouter()
 
 # 📍 Ruta absoluta al CSV
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "productos.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "utils", "productos.csv")
 DATA_PATH = os.path.abspath(DATA_PATH)
 
 # 🔹 Cargar CSV una sola vez en memoria
